@@ -1,0 +1,16 @@
+{
+  "id": "dictation-probe",
+  "name": "Dictation probe",
+  "requirements": {
+    "paseo": ">=0.11.2"
+  },
+  "build": [
+    [
+      "npm",
+      "ci",
+      "--omit=dev",
+      "--ignore-scripts",
+      "--legacy-peer-deps"
+    ]
+  ]
+}
