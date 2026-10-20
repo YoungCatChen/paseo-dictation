@@ -1,0 +1,8 @@
+{
+  "id": "dictation",
+  "name": "Dictation",
+  "requirements": {
+    "paseo": ">=0.11.2"
+  },
+  "build": [["npm", "ci", "--omit=dev", "--ignore-scripts", "--legacy-peer-deps"]]
+}
