@@ -1,5 +1,7 @@
 # Paseo Dictation
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Talk to a [Paseo](https://paseo.sh) agent instead of typing. Tap **Rec** above
 an agent's composer, speak, and tap **Stop**. The daemon sends the recording
 and a few recent turns to an audio-capable model, which transcribes it and
@@ -7,7 +9,8 @@ tidies it up, removing filler words, false starts, and repetition while
 keeping technical terms. The result goes to the agent as your message.
 
 It works with mixed-language speech, such as Chinese with English technical
-terms. The plugin UI is available in English and Simplified Chinese.
+terms. The plugin UI is available in English and Simplified Chinese and
+follows Paseo's language setting.
 
 ## How it works
 
@@ -39,7 +42,7 @@ Open **Settings → Plugins → Dictation**.
 | Context size limit | 8000 characters | Oldest context is dropped first. |
 | Review before sending | off | Show the tidied text with Send, Edit, and Discard buttons instead. |
 | Extra prompt instructions | empty | Appended to the built-in prompt. |
-| Plugin language | follow the device | English or Simplified Chinese. |
+| Plugin language | follow Paseo | English or Simplified Chinese. |
 
 Use **Test connection** to check the URL, key, and model with a text-only request.
 
@@ -84,6 +87,11 @@ uses to reach the app's native recorder.
   `expo-file-system` native modules. A Paseo release that removes or renames
   them would break mobile recording without breaking desktop.
 - The audio and recent conversation are sent to the configured endpoint.
+- The timeline row appears above the turn's "Worked for" footer. Paseo pins
+  that footer to the agent's last reply, and plugins cannot reorder rows.
+- Following Paseo's language reads Paseo's own stored app settings, which are
+  not a public plugin API. If that ever stops working, the plugin falls back to
+  the device language.
 
 ## Development
 

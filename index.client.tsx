@@ -1,23 +1,53 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
-import { translate } from "./shared/i18n";
+import { type Locale, translate } from "./shared/i18n";
 import { jobRowSchema, kTimelineKind, kTimelineVersion } from "./shared/timeline";
-import { currentSystemLocale } from "./client/locale";
+import { currentPaseoLocale, onPaseoLocaleChange, refreshPaseoLocale } from "./client/locale";
 import { createDictationPills } from "./client/pills";
 import { DictationSettingsScreen } from "./client/settings-screen";
 import { DictationRow } from "./client/timeline-row";
+import { dictationSettings } from "./shared/settings";
+import { settingsRpc } from "@getpaseo/plugin";
 
 export default function contribute(client: PluginClientContext) {
-  // Pill labels are set outside React, so they follow the device language.
-  const pills = createDictationPills(client, currentSystemLocale);
+  // Pill labels live outside React: resolve the plugin's language override,
+  // else Paseo's language, and relabel when either changes.
+  let override: Locale | null = null;
+  const locale = (): Locale => override ?? currentPaseoLocale();
+  const pills = createDictationPills(client, locale);
   const lifetime = new AbortController();
   let stopped = false;
+  let removeSettings: (() => void) | null = null;
 
-  const removeSettings = client.addSettingsScreen({
-    id: "dictation",
-    title: translate(currentSystemLocale(), "settings.title"),
-    icon: "Mic",
-    Component: DictationSettingsScreen,
-  });
+  const registerSettingsScreen = () => {
+    removeSettings?.();
+    removeSettings = client.addSettingsScreen({
+      id: "dictation",
+      title: translate(locale(), "settings.title"),
+      icon: "Mic",
+      Component: DictationSettingsScreen,
+    });
+  };
+  const relabel = () => {
+    if (stopped) return;
+    pills.relabel();
+    registerSettingsScreen();
+  };
+
+  registerSettingsScreen();
+  const removeLocaleListener = onPaseoLocaleChange(relabel);
+  void refreshPaseoLocale();
+  // The settings document is shared with the daemon; read the override once.
+  // Changes made in the settings screen apply to pills on the next reload.
+  void client
+    .rpc(settingsRpc(dictationSettings.id).read, {})
+    .then((state) => {
+      if (state.status !== "ready") return;
+      const choice = (state.values as { uiLanguage?: unknown }).uiLanguage;
+      override = choice === "en" || choice === "zh-CN" ? choice : null;
+      if (override) relabel();
+    })
+    .catch(() => {});
+
   const removeRenderer = client.addTimelineRenderer({
     kind: kTimelineKind,
     version: kTimelineVersion,
@@ -49,8 +79,9 @@ export default function contribute(client: PluginClientContext) {
   return () => {
     stopped = true;
     lifetime.abort();
+    removeLocaleListener();
     pills.clear();
     removeRenderer();
-    removeSettings();
+    removeSettings?.();
   };
 }

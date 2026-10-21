@@ -158,5 +158,11 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
     clear(): void {
       for (const agentId of [...pills.keys()]) remove(agentId);
     },
+    /** Re-renders every pill, e.g. after the UI language changes. */
+    relabel(): void {
+      for (const [agentId, pill] of pills) {
+        pill.registration.update(button(agentId, pill.state, pill.seconds));
+      }
+    },
   };
 }
