@@ -6,7 +6,7 @@ import { z } from "zod";
 const kMaxAudioBase64Length = 10 * 1024 * 1024;
 
 export const dictateRpc = defineRpc({
-  name: "dictation.submit",
+  name: "voice-prompt.submit",
   input: z.object({
     agentId: z.string().min(1),
     audioBase64: z.string().min(1).max(kMaxAudioBase64Length),
@@ -21,7 +21,7 @@ export const dictateRpc = defineRpc({
 });
 
 export const sendDraftRpc = defineRpc({
-  name: "dictation.send",
+  name: "voice-prompt.send",
   input: z.object({
     agentId: z.string().min(1),
     jobId: z.string().min(1),
@@ -31,13 +31,20 @@ export const sendDraftRpc = defineRpc({
 });
 
 export const discardDraftRpc = defineRpc({
-  name: "dictation.discard",
+  name: "voice-prompt.discard",
   input: z.object({ agentId: z.string().min(1), jobId: z.string().min(1) }),
   output: z.object({ discarded: z.boolean() }),
 });
 
 export const testConnectionRpc = defineRpc({
-  name: "dictation.test",
+  name: "voice-prompt.test",
   input: z.object({}),
   output: z.object({ ok: z.boolean(), detail: z.string() }),
+});
+
+/** Whether a recording would succeed, so clients can refuse before recording. */
+export const readinessRpc = defineRpc({
+  name: "voice-prompt.readiness",
+  input: z.object({ refresh: z.boolean().default(false) }),
+  output: z.object({ ready: z.boolean(), detail: z.string(), checkedAt: z.number() }),
 });

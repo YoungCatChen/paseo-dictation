@@ -1,12 +1,28 @@
-# Paseo Dictation
+# Tidy Voice Prompt
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Talk to a [Paseo](https://paseo.sh) agent instead of typing. Tap **Rec** above
-an agent's composer, speak, and tap **Stop**. The daemon sends the recording
-and a few recent turns to an audio-capable model, which transcribes it and
-tidies it up, removing filler words, false starts, and repetition while
-keeping technical terms. The result goes to the agent as your message.
+A [Paseo](https://paseo.sh) plugin for speaking prompts instead of typing
+them. Tap **Rec** above an agent's composer, speak, and tap again to stop. The
+daemon sends the recording and a few recent turns to an audio-capable model,
+which transcribes it and tidies it up, removing filler words, false starts, and
+repetition while keeping technical terms. The result goes to the agent as your
+prompt.
+
+## Why not Paseo's built-in dictation
+
+- **It tidies, not just transcribes.** What reaches the agent reads like a
+  typed prompt rather than a verbatim transcript.
+- **It knows the conversation.** Recent turns go along as context, so project
+  names, file paths, and identifiers come out spelled right.
+- **Mixed-language speech works,** such as Chinese with English technical
+  terms.
+- **Any OpenAI-compatible audio model,** including internal gateways that
+  authenticate with a key helper command.
+- **Your phone can close after you stop recording.** Transcription and sending
+  happen on the daemon.
+- **Every prompt is auditable.** The verbatim transcript stays beside what was
+  sent, and you can review before sending.
 
 It works with mixed-language speech, such as Chinese with English technical
 terms. The plugin UI is available in English and Simplified Chinese and
@@ -24,10 +40,15 @@ follows Paseo's language setting.
   was sent, so you can check what the model changed.
 - Clips shorter than 0.6 s, and clips with no recognizable speech, are never
   sent.
+- **Before recording**, the plugin checks that the endpoint, credential, and
+  model work by listing models (no tokens spent). A passing check is reused for
+  10 minutes; a failing one is retried after 30 seconds, on each tap, and after
+  settings are saved. If they do not, the pill
+  shows a warning icon and refuses to record, explaining why.
 
 ## Setup
 
-Open **Settings → Plugins → Dictation**.
+Open **Settings → Plugins → Tidy Voice Prompt → Settings**.
 
 | Setting | Default | Notes |
 | --- | --- | --- |
@@ -46,7 +67,7 @@ Open **Settings → Plugins → Dictation**.
 
 Use **Test connection** to check the URL, key, and model with a text-only request.
 
-Settings live in `$PASEO_HOME/plugin-settings/<plugin id>/dictation.json` on
+Settings live in `$PASEO_HOME/plugin-settings/tidy-voice-prompt/preferences.json` on
 the daemon host (`~/.paseo` by default) and can also be edited there. For
 example, to use an internal gateway with a credential helper:
 
@@ -58,7 +79,7 @@ example, to use an internal gateway with a credential helper:
     "model": "gemini-3.5-flash",
     "authMode": "command",
     "apiKeyCommand": "my-gateway-key-helper",
-    "extraHeaders": { "X-Client-Name": "paseo-dictation" }
+    "extraHeaders": { "X-Client-Name": "paseo-tidy-voice-prompt" }
   }
 }
 ```
@@ -68,7 +89,7 @@ Omitted values take their defaults.
 ## Install
 
 ```bash
-paseo plugin add github:YoungCatChen/paseo-dictation
+paseo plugin add github:YoungCatChen/paseo-tidy-voice-prompt
 ```
 
 Requires Paseo 0.11.0 or later, and `npm` on the daemon host's `PATH`: the
@@ -98,9 +119,9 @@ uses to reach the app's native recorder.
 ```bash
 npm install
 npm run check   # typecheck, then parse the client bundle with Hermes
-paseo plugin install "$PWD" --id dictation-dev
-paseo plugin reload dictation-dev
-paseo plugin logs dictation-dev
+paseo plugin install "$PWD" --id tidy-voice-prompt-dev
+paseo plugin reload tidy-voice-prompt-dev
+paseo plugin logs tidy-voice-prompt-dev
 ```
 
 The Paseo mobile app runs plugin client bundles on Hermes, which rejects some

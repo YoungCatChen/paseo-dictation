@@ -15,7 +15,7 @@ const kTitleKeys: Record<JobRow["state"], MessageKey> = {
   failed: "row.failed",
 };
 
-export function DictationRow({ agentId, item, theme }: PluginTimelineItemProps<JobRow>) {
+export function VoicePromptRow({ agentId, item, theme }: PluginTimelineItemProps<JobRow>) {
   const t = useTranslate();
   const row = item.data;
   const jobId = row.jobId;

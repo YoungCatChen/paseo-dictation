@@ -1,8 +1,16 @@
 {
-  "id": "dictation",
-  "name": "Dictation",
+  "id": "tidy-voice-prompt",
+  "name": "Tidy Voice Prompt",
   "requirements": {
     "paseo": ">=0.11.0"
   },
-  "build": [["npm", "ci", "--omit=dev", "--ignore-scripts", "--legacy-peer-deps"]]
+  "build": [
+    [
+      "npm",
+      "ci",
+      "--omit=dev",
+      "--ignore-scripts",
+      "--legacy-peer-deps"
+    ]
+  ]
 }

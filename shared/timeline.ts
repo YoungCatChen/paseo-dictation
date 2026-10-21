@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const kTimelineKind = "dictation";
+export const kTimelineKind = "voice-prompt";
 export const kTimelineVersion = 1;
 
 export const jobStates = [

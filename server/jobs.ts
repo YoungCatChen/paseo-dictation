@@ -2,33 +2,71 @@ import { randomUUID } from "node:crypto";
 import type { RpcInput } from "@getpaseo/plugin";
 import type { PluginHandlerContext, PluginSettings } from "@getpaseo/plugin/server";
 import type { dictateRpc, discardDraftRpc, sendDraftRpc } from "../shared/rpc";
-import { type DictationSettings, dictationSettings } from "../shared/settings";
+import { type VoicePromptSettings, voicePromptSettings } from "../shared/settings";
 import { type JobRow, kTimelineKind, kTimelineVersion } from "../shared/timeline";
 import { fetchRecentMessages } from "./context";
 import { formatContext } from "./prompt";
-import { testConnection, transcribe } from "./transcribe";
+import { checkReadiness, testConnection, transcribe } from "./transcribe";
 
 // Derived from the SDK so the daemon's production install needs no client package.
 type PaseoApi = PluginHandlerContext["paseo"];
-type Settings = PluginSettings<typeof dictationSettings.schema>;
+type Settings = PluginSettings<typeof voicePromptSettings.schema>;
 
 interface Job {
   agentId: string;
   row: JobRow;
 }
 
+interface Readiness {
+  ready: boolean;
+  detail: string;
+  checkedAt: number;
+}
+
+// A passing check is trusted for a while; a failing one is retried sooner so
+// fixing the endpoint does not require touching settings.
+const kReadyTtlMillis = 10 * 60_000;
+const kNotReadyTtlMillis = 30_000;
+
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export class DictationJobs {
+export class VoicePromptJobs {
   // Jobs awaiting review stay here so Send and Discard can find them. Rows in
   // the timeline outlive a daemon restart, but the pending draft does not.
   private readonly jobs = new Map<string, Job>();
 
-  constructor(private readonly settings: Settings) {}
+  private readiness: Readiness | null = null;
+  private pendingReadiness: Promise<Readiness> | null = null;
 
-  private async readSettings(): Promise<DictationSettings> {
+  constructor(private readonly settings: Settings) {
+    // Any settings change may fix or break the chain.
+    settings.subscribe(() => {
+      this.readiness = null;
+    });
+  }
+
+  async checkReadiness(refresh: boolean): Promise<Readiness> {
+    const cached = this.readiness;
+    const ttl = cached?.ready ? kReadyTtlMillis : kNotReadyTtlMillis;
+    if (!refresh && cached && Date.now() - cached.checkedAt < ttl) return cached;
+    this.pendingReadiness ??= (async () => {
+      try {
+        await checkReadiness(await this.readSettings());
+        return { ready: true, detail: "", checkedAt: Date.now() };
+      } catch (error) {
+        return { ready: false, detail: describe(error), checkedAt: Date.now() };
+      }
+    })().then((result) => {
+      this.readiness = result;
+      this.pendingReadiness = null;
+      return result;
+    });
+    return this.pendingReadiness;
+  }
+
+  private async readSettings(): Promise<VoicePromptSettings> {
     const state = await this.settings.read();
     if (state.status !== "ready") throw new Error(`Invalid settings: ${state.error}`);
     return state.values;
@@ -74,7 +112,7 @@ export class DictationJobs {
       const context = await fetchRecentMessages(paseo, input.agentId, settings.contextTurns)
         .then((messages) => formatContext(messages, settings.contextMaxChars))
         .catch((error) => {
-          console.warn(`[dictation] context unavailable: ${describe(error)}`);
+          console.warn(`[tidy-voice-prompt] context unavailable: ${describe(error)}`);
           return "";
         });
       const started = Date.now();
@@ -84,7 +122,7 @@ export class DictationJobs {
         context,
       );
       console.log(
-        `[dictation] job=${jobId} audioMs=${Math.round(input.durationMillis)} ` +
+        `[tidy-voice-prompt] job=${jobId} audioMs=${Math.round(input.durationMillis)} ` +
           `contextChars=${context.length} modelMs=${Date.now() - started} chars=${message.length}`,
       );
       job.row = { ...job.row, raw, text: message };
@@ -98,11 +136,12 @@ export class DictationJobs {
         job.row.state = "sent";
       }
     } catch (error) {
-      console.error(`[dictation] job=${jobId} failed: ${describe(error)}`);
+      console.error(`[tidy-voice-prompt] job=${jobId} failed: ${describe(error)}`);
       job.row = { ...job.row, state: "failed", error: describe(error) };
+      this.readiness = null;
     }
     await this.publish(paseo, jobId, job).catch((error) =>
-      console.error(`[dictation] job=${jobId} could not update its row: ${describe(error)}`),
+      console.error(`[tidy-voice-prompt] job=${jobId} could not update its row: ${describe(error)}`),
     );
   }
 
@@ -127,6 +166,8 @@ export class DictationJobs {
   }
 
   async test() {
+    const readiness = await this.checkReadiness(true);
+    if (!readiness.ready) return { ok: false, detail: readiness.detail };
     try {
       return { ok: true, detail: await testConnection(await this.readSettings()) };
     } catch (error) {

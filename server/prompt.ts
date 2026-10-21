@@ -1,4 +1,4 @@
-import type { DictationSettings } from "../shared/settings";
+import type { VoicePromptSettings } from "../shared/settings";
 
 export interface ContextMessage {
   role: "user" | "assistant";
@@ -45,7 +45,7 @@ export function formatContext(messages: ContextMessage[], maxChars: number): str
 }
 
 export function buildChatRequest(
-  settings: DictationSettings,
+  settings: VoicePromptSettings,
   audio: { base64: string; format: string },
   context: string,
 ): object {

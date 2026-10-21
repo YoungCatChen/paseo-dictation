@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import type { DictationSettings } from "../shared/settings";
+import type { VoicePromptSettings } from "../shared/settings";
 
 const kCommandTimeoutMs = 30_000;
 
@@ -43,7 +43,7 @@ function runKeyCommand(command: string): Promise<string> {
   });
 }
 
-async function resolveApiKey(settings: DictationSettings): Promise<string | null> {
+async function resolveApiKey(settings: VoicePromptSettings): Promise<string | null> {
   switch (settings.authMode) {
     case "none":
       return null;
@@ -67,7 +67,7 @@ export function invalidateApiKey(): void {
   cached = null;
 }
 
-export async function buildHeaders(settings: DictationSettings): Promise<Record<string, string>> {
+export async function buildHeaders(settings: VoicePromptSettings): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     ...settings.extraHeaders,
     "Content-Type": "application/json",

@@ -12,8 +12,8 @@ const headerName = z
   .trim()
   .regex(/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/, "Invalid header name");
 
-export const dictationSettings = defineSettings({
-  id: "dictation",
+export const voicePromptSettings = defineSettings({
+  id: "preferences",
   scope: "host",
   version: 1,
   schema: z.object({
@@ -38,4 +38,4 @@ export const dictationSettings = defineSettings({
   }),
 });
 
-export type DictationSettings = z.output<typeof dictationSettings.schema>;
+export type VoicePromptSettings = z.output<typeof voicePromptSettings.schema>;

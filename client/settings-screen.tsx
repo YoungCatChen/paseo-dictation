@@ -16,10 +16,11 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { Text } from "react-native";
 import { testConnectionRpc } from "../shared/rpc";
-import { type DictationSettings, dictationSettings } from "../shared/settings";
+import { type VoicePromptSettings, voicePromptSettings } from "../shared/settings";
 import { type Translate, useTranslate } from "./locale";
+import { notifySettingsSaved } from "./readiness-bus";
 
-type Ready = Extract<SettingsState<typeof dictationSettings.schema>, { status: "ready" }>;
+type Ready = Extract<SettingsState<typeof voicePromptSettings.schema>, { status: "ready" }>;
 
 // Text fields edit a draft committed by Save; switches and selects save at
 // once. Numbers and headers stay as text until saved so typing is not lossy.
@@ -35,7 +36,7 @@ interface Draft {
   promptAddendum: string;
 }
 
-function toDraft(values: DictationSettings): Draft {
+function toDraft(values: VoicePromptSettings): Draft {
   return {
     baseUrl: values.baseUrl,
     model: values.model,
@@ -68,9 +69,9 @@ function parseCount(text: string): number | null {
 
 function fromDraft(
   draft: Draft,
-  values: DictationSettings,
+  values: VoicePromptSettings,
   t: Translate,
-): { values: DictationSettings } | { error: string } {
+): { values: VoicePromptSettings } | { error: string } {
   const ttl = parseCount(draft.apiKeyCommandTtlSeconds);
   const turns = parseCount(draft.contextTurns);
   const maxChars = parseCount(draft.contextMaxChars);
@@ -115,8 +116,10 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
     [],
   );
   const saveNow = useCallback(
-    (patch: Partial<DictationSettings>) =>
-      void settings.save({ ...settings.values, ...patch }, settings.revision),
+    (patch: Partial<VoicePromptSettings>) =>
+      void settings
+        .save({ ...settings.values, ...patch }, settings.revision)
+        .then((saved) => saved && notifySettingsSaved()),
     [settings],
   );
   const saveDraft = useCallback(async () => {
@@ -127,6 +130,7 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
     }
     const saved = await settings.save(parsed.values, settings.revision);
     setStatus(saved ? { ok: true, text: t("settings.saved") } : null);
+    if (saved) notifySettingsSaved();
   }, [fields, settings, t]);
   const runTest = useCallback(async () => {
     setTesting(true);
@@ -287,9 +291,9 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
   );
 }
 
-export function DictationSettingsScreen({ theme }: PluginSurfaceProps) {
+export function PreferencesScreen({ theme }: PluginSurfaceProps) {
   const t = useTranslate();
-  const settings = useSettings(dictationSettings);
+  const settings = useSettings(voicePromptSettings);
   const style = useMemo(() => ({ color: theme.colors.statusDanger }), [theme]);
   if (settings.status === "loading") return null;
   if (settings.status !== "ready") {

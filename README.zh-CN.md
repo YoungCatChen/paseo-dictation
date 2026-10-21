@@ -1,8 +1,17 @@
-# Paseo Dictation
+# Tidy Voice Prompt
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-用说话代替打字，给 [Paseo](https://paseo.sh) 的 agent 发消息。点 agent 输入框上方的**录音**，说完再点一下停止。daemon 会把录音和最近几轮对话发给一个支持音频输入的模型，由模型转写并稍作整理：去掉口头禅、说错重来的部分和重复的话，保留技术术语原样，然后以你的名义发给 agent。
+一个 [Paseo](https://paseo.sh) 插件，让你用说话代替打字来写 prompt。点 agent 输入框上方的**录音**，说完再点一下停止。daemon 会把录音和最近几轮对话发给一个支持音频输入的模型，由模型转写并稍作整理：去掉口头禅、说错重来的部分和重复的话，保留技术术语原样，然后作为你的 prompt 发给 agent。
+
+## 和 Paseo 自带的听写有什么不同
+
+- **会整理，而不只是转写。** agent 收到的是像打字写出来的 prompt，不是逐字稿。
+- **知道上下文。** 会带上最近几轮对话，项目名、文件路径、函数名更容易拼对。
+- **支持中英混说**，比如中文里夹着英文技术术语。
+- **任何 OpenAI 兼容的音频模型都能用**，包括通过 key helper 命令鉴权的内部网关。
+- **点停止之后手机就可以关掉。** 转写和发送都在 daemon 上完成。
+- **每条 prompt 都可以核对。** 逐字转写和实际发出的内容放在一起，也可以设置成先确认再发送。
 
 支持中英混说，比如中文里夹着英文技术术语。插件界面有英文和简体中文两种，默认跟随 Paseo 的语言设置。
 
@@ -12,10 +21,11 @@
 - **转写在 daemon 主机上完成。** 客户端上传录音后就可以关掉，后续调用模型、发送消息都由 daemon 完成，进度显示在 agent 对话里的一行记录中。
 - **这行记录会保留逐字转写**，和实际发出的消息放在一起，方便你核对模型改了什么。
 - 短于 0.6 秒的录音，以及没识别出语音的录音，一律不发送。
+- **录音之前**，插件会通过列出模型（不消耗 token）检查接口、凭据和模型是否可用。检查通过的结果会复用 10 分钟；检查失败时，30 秒后、每次点按钮时、保存设置后都会重新检查。如果不可用，录音按钮会显示警告图标，点击时直接拒绝录音并说明原因。
 
 ## 设置
 
-打开 **设置 → 插件 → 语音输入**。
+打开 **设置 → 插件 → Tidy Voice Prompt → 设置**。
 
 | 设置项 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -34,7 +44,7 @@
 
 **测试连接**会发一个纯文本请求，检查 URL、key 和模型是否可用。
 
-设置保存在 daemon 主机的 `$PASEO_HOME/plugin-settings/<插件 id>/dictation.json`（默认是 `~/.paseo`），也可以直接编辑这个文件。比如接入一个通过凭据 helper 鉴权的内部网关：
+设置保存在 daemon 主机的 `$PASEO_HOME/plugin-settings/tidy-voice-prompt/preferences.json`（默认是 `~/.paseo`），也可以直接编辑这个文件。比如接入一个通过凭据 helper 鉴权的内部网关：
 
 ```json
 {
@@ -44,7 +54,7 @@
     "model": "gemini-3.5-flash",
     "authMode": "command",
     "apiKeyCommand": "my-gateway-key-helper",
-    "extraHeaders": { "X-Client-Name": "paseo-dictation" }
+    "extraHeaders": { "X-Client-Name": "paseo-tidy-voice-prompt" }
   }
 }
 ```
@@ -54,7 +64,7 @@
 ## 安装
 
 ```bash
-paseo plugin add github:YoungCatChen/paseo-dictation
+paseo plugin add github:YoungCatChen/paseo-tidy-voice-prompt
 ```
 
 需要 Paseo 0.11.0 或更高版本，并且 daemon 主机的 `PATH` 里有 `npm`。安装时 manifest 会执行 `npm ci` 拉取 `expo-modules-core`，客户端代码要靠它连上 app 的原生录音器。
@@ -74,9 +84,9 @@ paseo plugin add github:YoungCatChen/paseo-dictation
 ```bash
 npm install
 npm run check   # 先 typecheck，再用 Hermes 解析客户端 bundle
-paseo plugin install "$PWD" --id dictation-dev
-paseo plugin reload dictation-dev
-paseo plugin logs dictation-dev
+paseo plugin install "$PWD" --id tidy-voice-prompt-dev
+paseo plugin reload tidy-voice-prompt-dev
+paseo plugin logs tidy-voice-prompt-dev
 ```
 
 Paseo 手机 app 用 Hermes 运行插件的客户端 bundle。有些语法 typecheck 和 esbuild 都放行，Hermes 却不认，最典型的是 `class`。所以客户端代码用闭包和带标记的 Error 代替 class，`npm run check` 可以提前发现这类问题。

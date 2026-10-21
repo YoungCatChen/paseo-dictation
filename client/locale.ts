@@ -3,7 +3,7 @@ import { requireOptionalNativeModule } from "expo-modules-core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, TurboModuleRegistry } from "react-native";
 import { type Locale, type MessageKey, resolveLocale, translate } from "../shared/i18n";
-import { dictationSettings } from "../shared/settings";
+import { voicePromptSettings } from "../shared/settings";
 
 // Paseo does not expose its UI language to plugins. It persists the choice in
 // its own app settings, under this AsyncStorage key, as `language`: either
@@ -94,7 +94,7 @@ export type Translate = (key: MessageKey, params?: Record<string, string | numbe
 
 /** Returns a translator: the plugin's own setting wins, otherwise Paseo's language. */
 export function useTranslate(): Translate {
-  const settings = useSettings(dictationSettings);
+  const settings = useSettings(voicePromptSettings);
   const choice = settings.status === "ready" ? settings.values.uiLanguage : "system";
   const [followed, setFollowed] = useState(paseoLocale);
   useEffect(() => {

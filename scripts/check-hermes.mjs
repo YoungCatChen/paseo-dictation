@@ -25,7 +25,7 @@ const result = await build({
   logLevel: "silent",
 });
 
-const directory = mkdtempSync(path.join(tmpdir(), "paseo-dictation-"));
+const directory = mkdtempSync(path.join(tmpdir(), "paseo-tidy-voice-prompt-"));
 try {
   const bundle = path.join(directory, "client.js");
   writeFileSync(bundle, result.outputFiles[0].text);

@@ -3,10 +3,12 @@
 // spot in review; the `satisfies` check makes every key mandatory in zh-CN.
 
 const en = {
-  "pill.title": "Dictate a message",
+  "pill.title": "Speak a prompt",
   "pill.label": "Rec",
   "pill.recording": "Stop recording",
   "pill.uploading": "Sending…",
+  "pill.blocked": "Voice prompt is not set up",
+  "pill.blockedDetail": "Voice prompt is not ready: {detail}. Check Settings → Plugins → Tidy Voice Prompt.",
 
   "recorder.unavailable": "Recording is not available on this client: {detail}",
   "recorder.permissionDenied": "Microphone permission denied",
@@ -14,17 +16,17 @@ const en = {
   "recorder.tooShort": "Recording was too short and has been discarded",
 
   "row.transcribing": "Transcribing a {seconds}s recording…",
-  "row.review": "Dictation ready to send",
-  "row.sent": "Sent dictation",
-  "row.discarded": "Discarded dictation",
+  "row.review": "Voice prompt ready to send",
+  "row.sent": "Sent voice prompt",
+  "row.discarded": "Discarded voice prompt",
   "row.empty": "No speech recognized; nothing was sent",
-  "row.failed": "Dictation failed",
+  "row.failed": "Voice prompt failed",
   "row.raw": "Verbatim transcript",
   "row.send": "Send",
   "row.discard": "Discard",
   "row.edit": "Edit before sending",
 
-  "settings.title": "Dictation",
+  "settings.title": "Settings",
   "settings.model.section": "Model",
   "settings.model.baseUrl": "Base URL",
   "settings.model.baseUrlHint": "OpenAI-compatible endpoint; /chat/completions is appended",
@@ -67,10 +69,12 @@ const en = {
 export type MessageKey = keyof typeof en;
 
 const zhCN = {
-  "pill.title": "语音输入一条消息",
+  "pill.title": "用语音说一条 prompt",
   "pill.label": "录音",
   "pill.recording": "停止录音",
   "pill.uploading": "发送中…",
+  "pill.blocked": "语音 prompt 尚未配置好",
+  "pill.blockedDetail": "语音 prompt 暂不可用：{detail}。请检查 设置 → 插件 → Tidy Voice Prompt。",
 
   "recorder.unavailable": "此客户端无法录音：{detail}",
   "recorder.permissionDenied": "没有麦克风权限",
@@ -78,17 +82,17 @@ const zhCN = {
   "recorder.tooShort": "录音太短，已丢弃",
 
   "row.transcribing": "正在转写 {seconds} 秒的录音…",
-  "row.review": "语音消息待发送",
-  "row.sent": "已发送语音消息",
-  "row.discarded": "已丢弃语音消息",
+  "row.review": "语音 prompt 待发送",
+  "row.sent": "已发送语音 prompt",
+  "row.discarded": "已丢弃语音 prompt",
   "row.empty": "没有识别到语音，未发送",
-  "row.failed": "语音转写失败",
+  "row.failed": "语音 prompt 处理失败",
   "row.raw": "逐字转写",
   "row.send": "发送",
   "row.discard": "丢弃",
   "row.edit": "发送前编辑",
 
-  "settings.title": "语音输入",
+  "settings.title": "设置",
   "settings.model.section": "模型",
   "settings.model.baseUrl": "Base URL",
   "settings.model.baseUrlHint": "OpenAI 兼容的接口地址，会自动拼上 /chat/completions",

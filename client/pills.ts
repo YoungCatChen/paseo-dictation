@@ -4,7 +4,7 @@ import type {
   PluginClientContext,
 } from "@getpaseo/plugin/client";
 import { type Locale, type MessageKey, translate } from "../shared/i18n";
-import { dictateRpc } from "../shared/rpc";
+import { dictateRpc, readinessRpc } from "../shared/rpc";
 import { LevelMeterIcon } from "./level-meter";
 import { levelStore } from "./level-store";
 import { type ActiveRecording, isRecorderError, startRecording } from "./recorder";
@@ -13,6 +13,9 @@ import { type ActiveRecording, isRecorderError, startRecording } from "./recorde
 const kMinDurationMillis = 600;
 
 type PillState = "idle" | "starting" | "recording" | "uploading";
+
+/** Last known daemon readiness; unknown until the first check returns. */
+type Readiness = { kind: "unknown" } | { kind: "ready" } | { kind: "blocked"; detail: string };
 
 interface AgentPill {
   registration: PluginButtonRegistration;
@@ -27,15 +30,16 @@ function formatElapsed(seconds: number): string {
 }
 
 /**
- * Maintains one dictation pill per agent. Only one agent records at a time.
+ * Maintains one voice prompt pill per agent. Only one agent records at a time.
  * Actions reject with a localized message; Paseo shows it as a toast.
  *
  * Written as a closure rather than a class: Hermes in the Paseo app cannot
  * parse `class`, and the plugin compiler does not lower it.
  */
-export function createDictationPills(client: PluginClientContext, locale: () => Locale) {
+export function createVoicePromptPills(client: PluginClientContext, locale: () => Locale) {
   const pills = new Map<string, AgentPill>();
   let activeAgentId: string | null = null;
+  let readiness: Readiness = { kind: "unknown" };
 
   const t = (key: MessageKey, params?: Record<string, string | number>) =>
     translate(locale(), key, params);
@@ -56,10 +60,11 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
         : state === "uploading" || state === "starting"
           ? t("pill.uploading")
           : t("pill.label");
+    const blocked = state === "idle" && readiness.kind === "blocked";
     return {
-      title: state === "recording" ? t("pill.recording") : t("pill.title"),
+      title: state === "recording" ? t("pill.recording") : blocked ? t("pill.blocked") : t("pill.title"),
       // The icon shows live level bars on the recording agent's pill.
-      icon: LevelMeterIcon,
+      icon: blocked ? "TriangleAlert" : LevelMeterIcon,
       label,
       disabled: state === "uploading" || state === "starting",
       behavior: { kind: "action", onPress: () => toggle(agentId) },
@@ -84,10 +89,43 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
     pill.registration.update({ label: formatElapsed(seconds) });
   };
 
+  const relabel = () => {
+    for (const [agentId, pill] of pills) {
+      pill.registration.update(button(agentId, pill.state, pill.seconds));
+    }
+  };
+
+  const setReadiness = (next: Readiness) => {
+    const changed =
+      next.kind !== readiness.kind ||
+      (next.kind === "blocked" && readiness.kind === "blocked" && next.detail !== readiness.detail);
+    readiness = next;
+    if (changed) relabel();
+  };
+
+  const checkReadiness = async (refresh: boolean): Promise<Readiness> => {
+    try {
+      const result = await client.rpc(readinessRpc, { refresh });
+      setReadiness(result.ready ? { kind: "ready" } : { kind: "blocked", detail: result.detail });
+    } catch (error) {
+      // An unreachable plugin backend blocks recording just the same.
+      setReadiness({ kind: "blocked", detail: describe(error) });
+    }
+    return readiness;
+  };
+
   const start = async (agentId: string, pill: AgentPill): Promise<void> => {
     if (activeAgentId) return;
     activeAgentId = agentId;
     setState(agentId, "starting");
+    // Recheck when blocked so a fixed setup records at once; otherwise reuse
+    // the daemon's cached verdict and refuse before opening the microphone.
+    const verdict = await checkReadiness(readiness.kind === "blocked");
+    if (verdict.kind === "blocked") {
+      activeAgentId = null;
+      setState(agentId, "idle");
+      throw new Error(t("pill.blockedDetail", { detail: verdict.detail }));
+    }
     levelStore.begin(agentId);
     try {
       pill.recording = await startRecording(onLevel(agentId));
@@ -121,6 +159,8 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
     } finally {
       activeAgentId = null;
       setState(agentId, "idle");
+      // A failed transcription invalidates the daemon's verdict; pick it up.
+      void checkReadiness(false);
     }
   };
 
@@ -153,16 +193,17 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
         button: button(agent.id, "idle"),
       });
       pills.set(agent.id, { registration, state: "idle", recording: null, seconds: 0 });
+      if (readiness.kind === "unknown") void checkReadiness(false);
     },
     remove,
     clear(): void {
       for (const agentId of [...pills.keys()]) remove(agentId);
     },
     /** Re-renders every pill, e.g. after the UI language changes. */
-    relabel(): void {
-      for (const [agentId, pill] of pills) {
-        pill.registration.update(button(agentId, pill.state, pill.seconds));
-      }
+    relabel,
+    /** Asks the daemon again, e.g. after settings change. */
+    recheck(): void {
+      void checkReadiness(true);
     },
   };
 }

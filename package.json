@@ -1,5 +1,5 @@
 {
-  "name": "paseo-dictation",
+  "name": "paseo-tidy-voice-prompt",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -20,5 +20,5 @@
   "dependencies": {
     "expo-modules-core": "3.0.29"
   },
-  "description": "Speak to a Paseo agent: record on any client, transcribe and tidy on the daemon with an OpenAI-compatible model, then send."
+  "description": "Speak to a Paseo agent: record on any client, then the daemon transcribes and tidies it with an audio-capable model and sends it as your prompt."
 }
