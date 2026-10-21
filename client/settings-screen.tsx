@@ -13,17 +13,20 @@ import {
   SettingsSelect,
   SettingsSwitch,
 } from "@getpaseo/plugin/client/ui";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text } from "react-native";
 import { testConnectionRpc } from "../shared/rpc";
 import { type VoicePromptSettings, voicePromptSettings } from "../shared/settings";
 import { type Translate, useTranslate } from "./locale";
 import { notifySettingsSaved } from "./readiness-bus";
 
+const kAutosaveDelayMillis = 700;
+
 type Ready = Extract<SettingsState<typeof voicePromptSettings.schema>, { status: "ready" }>;
 
-// Text fields edit a draft committed by Save; switches and selects save at
-// once. Numbers and headers stay as text until saved so typing is not lossy.
+// Text fields edit a draft that autosaves shortly after typing stops and when
+// the screen closes; switches and selects save at once. Numbers and headers
+// stay as text in the draft so partial input is not lost while typing.
 interface Draft {
   baseUrl: string;
   model: string;
@@ -97,9 +100,10 @@ function fromDraft(
 function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProps["theme"] }) {
   const t = useTranslate();
   const test = useRpc(testConnectionRpc);
-  // Draft text survives immediate saves from switches and selects; Save
+  // Draft text survives immediate saves from switches and selects; autosave
   // merges it over the latest stored values.
   const [fields, setFields] = useState(() => toDraft(settings.values));
+  const [dirty, setDirty] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [testing, setTesting] = useState(false);
   const styles = useMemo(
@@ -111,8 +115,10 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
   );
 
   const field = useCallback(
-    (name: keyof Draft) => (text: string) =>
-      setFields((current) => ({ ...current, [name]: text })),
+    (name: keyof Draft) => (text: string) => {
+      setFields((current) => ({ ...current, [name]: text }));
+      setDirty(true);
+    },
     [],
   );
   const saveNow = useCallback(
@@ -128,10 +134,26 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
       setStatus({ ok: false, text: parsed.error });
       return;
     }
+    setDirty(false);
     const saved = await settings.save(parsed.values, settings.revision);
     setStatus(saved ? { ok: true, text: t("settings.saved") } : null);
     if (saved) notifySettingsSaved();
   }, [fields, settings, t]);
+
+  // Autosave once typing pauses. The plugin SettingsInput exposes no blur
+  // event, so a short debounce stands in for Paseo's own save-on-blur.
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = setTimeout(() => void saveDraft(), kAutosaveDelayMillis);
+    return () => clearTimeout(timer);
+  }, [dirty, saveDraft]);
+
+  // Flush a pending edit when the screen closes before the debounce fires.
+  const flush = useRef<() => void>(() => {});
+  flush.current = () => {
+    if (dirty) void saveDraft();
+  };
+  useEffect(() => () => flush.current(), []);
   const runTest = useCallback(async () => {
     setTesting(true);
     try {
@@ -145,6 +167,8 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
   }, [test]);
 
   const values = settings.values;
+  // Only switches and selects wait for an in-flight save; text fields stay
+  // editable so autosave never interrupts typing.
   const disabled = settings.saving;
   return (
     <>
@@ -155,14 +179,12 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
             hint={t("settings.model.baseUrlHint")}
             initialValue={fields.baseUrl}
             onChangeText={field("baseUrl")}
-            disabled={disabled}
           />
           <SettingsInput
             label={t("settings.model.model")}
             hint={t("settings.model.modelHint")}
             initialValue={fields.model}
             onChangeText={field("model")}
-            disabled={disabled}
           />
         </SettingsCard>
       </SettingsSection>
@@ -187,7 +209,6 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
               initialValue={fields.apiKey}
               onChangeText={field("apiKey")}
               secureTextEntry
-              disabled={disabled}
             />
           ) : null}
           {values.authMode === "command" ? (
@@ -196,7 +217,6 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
               hint={t("settings.auth.command.hint")}
               initialValue={fields.apiKeyCommand}
               onChangeText={field("apiKeyCommand")}
-              disabled={disabled}
             />
           ) : null}
           {values.authMode === "command" ? (
@@ -205,7 +225,6 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
               hint={t("settings.auth.ttlHint")}
               initialValue={fields.apiKeyCommandTtlSeconds}
               onChangeText={field("apiKeyCommandTtlSeconds")}
-              disabled={disabled}
             />
           ) : null}
           <SettingsInput
@@ -214,7 +233,6 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
             initialValue={fields.extraHeaders}
             onChangeText={field("extraHeaders")}
             placeholder="X-Example: value"
-            disabled={disabled}
           />
         </SettingsCard>
       </SettingsSection>
@@ -226,13 +244,11 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
             hint={t("settings.context.turnsHint")}
             initialValue={fields.contextTurns}
             onChangeText={field("contextTurns")}
-            disabled={disabled}
           />
           <SettingsInput
             label={t("settings.context.maxChars")}
             initialValue={fields.contextMaxChars}
             onChangeText={field("contextMaxChars")}
-            disabled={disabled}
           />
         </SettingsCard>
       </SettingsSection>
@@ -250,7 +266,6 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
             label={t("settings.behavior.prompt")}
             initialValue={fields.promptAddendum}
             onChangeText={field("promptAddendum")}
-            disabled={disabled}
           />
           <SettingsSelect
             label={t("settings.behavior.language")}
@@ -267,12 +282,6 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
       </SettingsSection>
 
       <SettingsCard>
-        <SettingsAction
-          label={t("settings.save")}
-          actionLabel={t("settings.save")}
-          onPress={() => void saveDraft()}
-          disabled={disabled}
-        />
         <SettingsAction
           label={t("settings.test")}
           actionLabel={testing ? t("settings.testing") : t("settings.test")}

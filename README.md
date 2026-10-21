@@ -65,7 +65,7 @@ Open **Settings → Plugins → Tidy Voice Prompt → Settings**.
 | Extra prompt instructions | empty | Appended to the built-in prompt. |
 | Plugin language | follow Paseo | English or Simplified Chinese. |
 
-Use **Test connection** to check the URL, key, and model with a text-only request.
+Changes save automatically. Use **Test connection** to check the URL, key, and model with a text-only request.
 
 Settings live in `$PASEO_HOME/plugin-settings/tidy-voice-prompt/preferences.json` on
 the daemon host (`~/.paseo` by default) and can also be edited there. For

@@ -42,7 +42,7 @@
 | 额外的 prompt 指令 | 空 | 追加在内置 prompt 后面。 |
 | 插件语言 | 跟随 Paseo | 英文或简体中文。 |
 
-**测试连接**会发一个纯文本请求，检查 URL、key 和模型是否可用。
+设置会自动保存。**测试连接**会发一个纯文本请求，检查 URL、key 和模型是否可用。
 
 设置保存在 daemon 主机的 `$PASEO_HOME/plugin-settings/tidy-voice-prompt/preferences.json`（默认是 `~/.paseo`），也可以直接编辑这个文件。比如接入一个通过凭据 helper 鉴权的内部网关：
 
