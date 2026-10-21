@@ -14,7 +14,7 @@ import {
   SettingsSwitch,
 } from "@getpaseo/plugin/client/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Text } from "react-native";
+import { Platform, Text, TextInput } from "react-native";
 import { testConnectionRpc } from "../shared/rpc";
 import { type VoicePromptSettings, voicePromptSettings } from "../shared/settings";
 import { type Translate, useTranslate } from "./locale";
@@ -110,6 +110,20 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
     () => ({
       ok: { color: theme.colors.statusSuccess },
       error: { color: theme.colors.statusDanger },
+      multiline: {
+        minWidth: 240,
+        minHeight: 72,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surface0,
+        color: theme.colors.foreground,
+        fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "ui-monospace, Menlo, monospace" }),
+        fontSize: 13,
+        textAlignVertical: "top" as const,
+      },
     }),
     [theme],
   );
@@ -227,13 +241,21 @@ function Editor({ settings, theme }: { settings: Ready; theme: PluginSurfaceProp
               onChangeText={field("apiKeyCommandTtlSeconds")}
             />
           ) : null}
-          <SettingsInput
-            label={t("settings.auth.headers")}
-            hint={t("settings.auth.headersHint")}
-            initialValue={fields.extraHeaders}
-            onChangeText={field("extraHeaders")}
-            placeholder="X-Example: value"
-          />
+          {/* SettingsInput is single-line, so headers use a themed multiline input. */}
+          <SettingsRow label={t("settings.auth.headers")} hint={t("settings.auth.headersHint")}>
+            <TextInput
+              accessibilityLabel={t("settings.auth.headers")}
+              defaultValue={fields.extraHeaders}
+              onChangeText={field("extraHeaders")}
+              placeholder={"X-Example: value\nX-Other: value"}
+              placeholderTextColor={theme.colors.foregroundMuted}
+              multiline
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              style={styles.multiline}
+            />
+          </SettingsRow>
         </SettingsCard>
       </SettingsSection>
 
