@@ -68,7 +68,7 @@ Omitted values take their defaults.
 paseo plugin add github:YoungCatChen/paseo-dictation
 ```
 
-Requires Paseo 0.11.2 or later, and `npm` on the daemon host's `PATH`: the
+Requires Paseo 0.11.0 or later, and `npm` on the daemon host's `PATH`: the
 manifest runs `npm ci` to fetch `expo-modules-core`, which the client bundle
 uses to reach the app's native recorder.
 

@@ -12,7 +12,8 @@ export interface NativeRecorder {
   prepareToRecordAsync(options?: object): Promise<void>;
   record(options?: object): unknown;
   stop(): Promise<void>;
-  getStatus(): { durationMillis: number };
+  /** `metering` is average input power in dBFS, present when metering is enabled. */
+  getStatus(): { durationMillis: number; metering?: number };
   release(): void;
 }
 
@@ -56,7 +57,8 @@ export function nativeRecordingOptions(): object {
     sampleRate: 16000,
     numberOfChannels: 1,
     bitRate: 32000,
-    isMeteringEnabled: false,
+    // Drives the live level bars in the pill icon.
+    isMeteringEnabled: true,
   };
   if (Platform.OS === "ios") {
     // "aac " is kAudioFormatMPEG4AAC; 127 is AVAudioQuality.max.

@@ -5,6 +5,8 @@ import type {
 } from "@getpaseo/plugin/client";
 import { type Locale, type MessageKey, translate } from "../shared/i18n";
 import { dictateRpc } from "../shared/rpc";
+import { LevelMeterIcon } from "./level-meter";
+import { levelStore } from "./level-store";
 import { type ActiveRecording, isRecorderError, startRecording } from "./recorder";
 
 // Clips shorter than this are almost always accidental taps.
@@ -16,6 +18,12 @@ interface AgentPill {
   registration: PluginButtonRegistration;
   state: PillState;
   recording: ActiveRecording | null;
+  /** Whole seconds shown in the label while recording. */
+  seconds: number;
+}
+
+function formatElapsed(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 /**
@@ -41,16 +49,17 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
     return error instanceof Error ? error.message : String(error);
   };
 
-  const button = (agentId: string, state: PillState): PluginButton => {
+  const button = (agentId: string, state: PillState, seconds = 0): PluginButton => {
     const label =
       state === "recording"
-        ? t("pill.recording")
+        ? formatElapsed(seconds)
         : state === "uploading" || state === "starting"
           ? t("pill.uploading")
           : t("pill.label");
     return {
-      title: t("pill.title"),
-      icon: state === "recording" ? "Square" : "Mic",
+      title: state === "recording" ? t("pill.recording") : t("pill.title"),
+      // The icon shows live level bars on the recording agent's pill.
+      icon: LevelMeterIcon,
       label,
       disabled: state === "uploading" || state === "starting",
       behavior: { kind: "action", onPress: () => toggle(agentId) },
@@ -61,17 +70,30 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
     const pill = pills.get(agentId);
     if (!pill) return;
     pill.state = state;
+    pill.seconds = 0;
     pill.registration.update(button(agentId, state));
+  };
+
+  // Level updates redraw only the icon; the label changes once per second.
+  const onLevel = (agentId: string) => (level: number, elapsedMillis: number) => {
+    levelStore.push(level, elapsedMillis);
+    const pill = pills.get(agentId);
+    const seconds = Math.floor(elapsedMillis / 1000);
+    if (!pill || pill.state !== "recording" || seconds === pill.seconds) return;
+    pill.seconds = seconds;
+    pill.registration.update({ label: formatElapsed(seconds) });
   };
 
   const start = async (agentId: string, pill: AgentPill): Promise<void> => {
     if (activeAgentId) return;
     activeAgentId = agentId;
     setState(agentId, "starting");
+    levelStore.begin(agentId);
     try {
-      pill.recording = await startRecording();
+      pill.recording = await startRecording(onLevel(agentId));
       setState(agentId, "recording");
     } catch (error) {
+      levelStore.end();
       activeAgentId = null;
       setState(agentId, "idle");
       throw new Error(describe(error));
@@ -82,6 +104,7 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
     const recording = pill.recording;
     pill.recording = null;
     if (!recording) return;
+    levelStore.end();
     setState(agentId, "uploading");
     try {
       const clip = await recording.stop();
@@ -114,7 +137,10 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
     pill.recording?.cancel();
     pill.registration.remove();
     pills.delete(agentId);
-    if (activeAgentId === agentId) activeAgentId = null;
+    if (activeAgentId === agentId) {
+      activeAgentId = null;
+      levelStore.end();
+    }
   };
 
   return {
@@ -126,7 +152,7 @@ export function createDictationPills(client: PluginClientContext, locale: () => 
         agentId: agent.id,
         button: button(agent.id, "idle"),
       });
-      pills.set(agent.id, { registration, state: "idle", recording: null });
+      pills.set(agent.id, { registration, state: "idle", recording: null, seconds: 0 });
     },
     remove,
     clear(): void {

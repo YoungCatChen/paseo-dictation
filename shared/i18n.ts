@@ -5,7 +5,7 @@
 const en = {
   "pill.title": "Dictate a message",
   "pill.label": "Rec",
-  "pill.recording": "Stop",
+  "pill.recording": "Stop recording",
   "pill.uploading": "Sending…",
 
   "recorder.unavailable": "Recording is not available on this client: {detail}",
@@ -69,7 +69,7 @@ export type MessageKey = keyof typeof en;
 const zhCN = {
   "pill.title": "语音输入一条消息",
   "pill.label": "录音",
-  "pill.recording": "停止",
+  "pill.recording": "停止录音",
   "pill.uploading": "发送中…",
 
   "recorder.unavailable": "此客户端无法录音：{detail}",
