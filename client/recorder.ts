@@ -20,13 +20,20 @@ export interface ActiveRecording {
   cancel(): void;
 }
 
-export class RecorderError extends Error {
-  constructor(
-    readonly reason: "unavailable" | "permission" | "no-file",
-    detail: string,
-  ) {
-    super(detail);
-  }
+export type RecorderFailure = "unavailable" | "permission" | "no-file";
+
+// Hermes in the Paseo app cannot parse `class`, and the plugin compiler does
+// not lower it, so client code builds tagged errors instead of subclasses.
+export interface RecorderError extends Error {
+  recorderFailure: RecorderFailure;
+}
+
+function recorderError(reason: RecorderFailure, detail: string): RecorderError {
+  return Object.assign(new Error(detail), { recorderFailure: reason });
+}
+
+export function isRecorderError(error: unknown): error is RecorderError {
+  return error instanceof Error && "recorderFailure" in error;
 }
 
 async function startNative(
@@ -34,7 +41,7 @@ async function startNative(
   fileSystem: NativeFileSystemModule,
 ): Promise<ActiveRecording> {
   const permission = await audio.requestRecordingPermissionsAsync();
-  if (!permission.granted) throw new RecorderError("permission", permission.status);
+  if (!permission.granted) throw recorderError("permission", permission.status);
   await audio.setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
   const recorder: NativeRecorder = new audio.AudioRecorder(nativeRecordingOptions());
   await recorder.prepareToRecordAsync();
@@ -52,7 +59,7 @@ async function startNative(
   return {
     async stop() {
       const { uri, durationMillis } = await finish();
-      if (!uri) throw new RecorderError("no-file", "recorder returned no URI");
+      if (!uri) throw recorderError("no-file", "recorder returned no URI");
       return { base64: await takeRecording(fileSystem, uri), format: "mp4", durationMillis };
     },
     cancel() {
@@ -108,12 +115,12 @@ function blobToBase64(blob: Blob, browser: BrowserGlobals): Promise<string> {
 async function startBrowser(browser: BrowserGlobals): Promise<ActiveRecording> {
   const media = browser.navigator?.mediaDevices;
   const Recorder = browser.MediaRecorder;
-  if (!media || !Recorder) throw new RecorderError("unavailable", "MediaRecorder is unavailable");
+  if (!media || !Recorder) throw recorderError("unavailable", "MediaRecorder is unavailable");
   let stream: { getTracks(): BrowserTrack[] };
   try {
     stream = await media.getUserMedia({ audio: { channelCount: 1 } });
   } catch (error) {
-    throw new RecorderError("permission", error instanceof Error ? error.message : String(error));
+    throw recorderError("permission", error instanceof Error ? error.message : String(error));
   }
   const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((type) =>
     Recorder.isTypeSupported(type),
@@ -137,7 +144,7 @@ async function startBrowser(browser: BrowserGlobals): Promise<ActiveRecording> {
       const type = recorder.mimeType || mimeType || "audio/webm";
       // React Native's Blob typing requires lastModified; browsers ignore it.
       const blob = new Blob(chunks, { type, lastModified: Date.now() });
-      if (blob.size === 0) throw new RecorderError("no-file", "recording is empty");
+      if (blob.size === 0) throw recorderError("no-file", "recording is empty");
       return {
         base64: await blobToBase64(blob, browser),
         format: type.includes("mp4") ? "mp4" : "webm",
@@ -154,7 +161,7 @@ export function startRecording(): Promise<ActiveRecording> {
   if (Platform.OS === "web") return startBrowser(globalThis as BrowserGlobals);
   const modules = findNativeModules();
   if (modules.kind === "missing") {
-    return Promise.reject(new RecorderError("unavailable", modules.detail));
+    return Promise.reject(recorderError("unavailable", modules.detail));
   }
   return startNative(modules.audio, modules.fileSystem);
 }

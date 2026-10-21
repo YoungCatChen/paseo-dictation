@@ -89,8 +89,12 @@ uses to reach the app's native recorder.
 
 ```bash
 npm install
-npm run typecheck
+npm run check   # typecheck, then parse the client bundle with Hermes
 paseo plugin install "$PWD" --id dictation-dev
 paseo plugin reload dictation-dev
 paseo plugin logs dictation-dev
 ```
+
+The Paseo mobile app runs plugin client bundles on Hermes, which rejects some
+syntax that typecheck and esbuild accept, notably `class`. Client code
+therefore uses closures and tagged errors; `npm run check` catches regressions.

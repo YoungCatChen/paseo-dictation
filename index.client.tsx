@@ -2,13 +2,13 @@ import type { PluginClientContext } from "@getpaseo/plugin/client";
 import { translate } from "./shared/i18n";
 import { jobRowSchema, kTimelineKind, kTimelineVersion } from "./shared/timeline";
 import { currentSystemLocale } from "./client/locale";
-import { DictationPills } from "./client/pills";
+import { createDictationPills } from "./client/pills";
 import { DictationSettingsScreen } from "./client/settings-screen";
 import { DictationRow } from "./client/timeline-row";
 
 export default function contribute(client: PluginClientContext) {
   // Pill labels are set outside React, so they follow the device language.
-  const pills = new DictationPills(client, currentSystemLocale);
+  const pills = createDictationPills(client, currentSystemLocale);
   const lifetime = new AbortController();
   let stopped = false;
 
