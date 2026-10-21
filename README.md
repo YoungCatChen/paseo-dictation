@@ -86,6 +86,11 @@ example, to use an internal gateway with a credential helper:
 
 Omitted values take their defaults.
 
+Paseo rewrites this file as a single line on every save. Keys follow a fixed
+order (the schema's, with extra headers sorted by name), so for version control
+pipe it through `jq --sort-keys .` or `jq .` to get a stable, indented copy;
+the plugin reads either form.
+
 ## Install
 
 ```bash

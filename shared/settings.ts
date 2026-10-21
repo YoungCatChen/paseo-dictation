@@ -12,6 +12,8 @@ const headerName = z
   .trim()
   .regex(/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/, "Invalid header name");
 
+// Paseo writes this document with JSON.stringify in schema key order, so the
+// top-level layout is stable; any nested record must be ordered here.
 export const voicePromptSettings = defineSettings({
   id: "preferences",
   scope: "host",
@@ -27,7 +29,13 @@ export const voicePromptSettings = defineSettings({
     apiKeyCommand: z.string().default(""),
     /** Reruns the command after this many seconds; 0 runs it per request. */
     apiKeyCommandTtlSeconds: z.number().int().min(0).max(86400).default(1800),
-    extraHeaders: z.record(headerName, z.string()).default({}),
+    // Sorted by name so the stored file diffs cleanly regardless of edit order.
+    extraHeaders: z
+      .record(headerName, z.string())
+      .default({})
+      .transform((headers) =>
+        Object.fromEntries(Object.entries(headers).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))),
+      ),
     contextTurns: z.number().int().min(0).max(20).default(3),
     contextMaxChars: z.number().int().min(0).max(100_000).default(8000),
     /** Shows the tidied text for confirmation instead of sending it at once. */
