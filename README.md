@@ -97,9 +97,8 @@ the plugin reads either form.
 paseo plugin add github:YoungCatChen/paseo-tidy-voice-prompt
 ```
 
-Requires Paseo 0.11.0 or later, and `npm` on the daemon host's `PATH`: the
-manifest runs `npm ci` to fetch `expo-modules-core`, which the client bundle
-uses to reach the app's native recorder.
+Requires Paseo 0.11.0 or later. The plugin has no runtime dependencies to
+install.
 
 ## Limits
 

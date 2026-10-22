@@ -1,9 +1,9 @@
 import { useSettings } from "@getpaseo/plugin/client";
-import { requireOptionalNativeModule } from "expo-modules-core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, TurboModuleRegistry } from "react-native";
 import { type Locale, type MessageKey, resolveLocale, translate } from "../shared/i18n";
 import { voicePromptSettings } from "../shared/settings";
+import { findExpoModule } from "./expo-modules";
 
 // Paseo does not expose its UI language to plugins. It persists the choice in
 // its own app settings, under this AsyncStorage key, as `language`: either
@@ -43,9 +43,7 @@ function deviceLanguageTag(): string | null {
   if (Platform.OS === "web") {
     return typeof navigator !== "undefined" ? (navigator.languages?.[0] ?? null) : null;
   }
-  const module = requireOptionalNativeModule<{ getLocales(): { languageTag: string }[] }>(
-    "ExpoLocalization",
-  );
+  const module = findExpoModule<{ getLocales(): { languageTag: string }[] }>("ExpoLocalization");
   try {
     return module?.getLocales()[0]?.languageTag ?? null;
   } catch {

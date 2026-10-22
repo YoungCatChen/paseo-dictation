@@ -1,16 +1,8 @@
 {
   "id": "tidy-voice-prompt",
   "name": "Tidy Voice Prompt",
+  "description": "Speak a prompt, and an audio model of your choice transcribes and tidies it before sending it to the agent.",
   "requirements": {
     "paseo": ">=0.11.0"
-  },
-  "build": [
-    [
-      "npm",
-      "ci",
-      "--omit=dev",
-      "--ignore-scripts",
-      "--legacy-peer-deps"
-    ]
-  ]
+  }
 }

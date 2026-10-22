@@ -17,8 +17,9 @@
     "@types/node": "^22.0.0",
     "esbuild": "^0.25.12"
   },
-  "dependencies": {
-    "expo-modules-core": "3.0.29"
-  },
-  "description": "Speak to a Paseo agent: record on any client, then the daemon transcribes and tidies it with an audio-capable model and sends it as your prompt."
+  "description": "Speak a prompt, and an audio model of your choice transcribes and tidies it before sending it to the agent.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YoungCatChen/paseo-tidy-voice-prompt.git"
+  }
 }

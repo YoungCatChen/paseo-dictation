@@ -1,10 +1,9 @@
 // Reaches the host app's native ExpoAudio and FileSystem modules from a plugin
-// bundle. Paseo does not expose expo-audio to plugins, so this bundles
-// expo-modules-core, which looks native modules up on the app-wide
-// `globalThis.expo.modules` registry. Only the native surface this plugin
-// needs is typed here; it mirrors expo-audio 1.0.x and expo-file-system 19.x.
-import { requireOptionalNativeModule } from "expo-modules-core";
+// bundle. Paseo does not expose expo-audio to plugins, so this calls the
+// native modules directly. Only the native surface this plugin needs is typed
+// here; it mirrors expo-audio 1.0.x and expo-file-system 19.x.
 import { Platform } from "react-native";
+import { findExpoModule } from "./expo-modules";
 
 export interface NativeRecorder {
   readonly uri: string | null;
@@ -40,8 +39,8 @@ export type NativeModules =
 
 /** Looks the native modules up without throwing so the UI can report why. */
 export function findNativeModules(): NativeModules {
-  const audio = requireOptionalNativeModule<NativeAudioModule>("ExpoAudio");
-  const fileSystem = requireOptionalNativeModule<NativeFileSystemModule>("FileSystem");
+  const audio = findExpoModule<NativeAudioModule>("ExpoAudio");
+  const fileSystem = findExpoModule<NativeFileSystemModule>("FileSystem");
   if (!audio || !fileSystem) {
     return { kind: "missing", detail: `ExpoAudio=${!!audio} FileSystem=${!!fileSystem}` };
   }

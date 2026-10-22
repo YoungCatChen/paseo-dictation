@@ -69,7 +69,7 @@ Paseo 每次保存都会把这个文件重写成单行。字段顺序是固定�
 paseo plugin add github:YoungCatChen/paseo-tidy-voice-prompt
 ```
 
-需要 Paseo 0.11.0 或更高版本，并且 daemon 主机的 `PATH` 里有 `npm`。安装时 manifest 会执行 `npm ci` 拉取 `expo-modules-core`，客户端代码要靠它连上 app 的原生录音器。
+需要 Paseo 0.11.0 或更高版本。插件没有需要额外安装的运行时依赖。
 
 ## 限制
 
